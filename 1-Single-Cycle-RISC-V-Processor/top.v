@@ -4,9 +4,7 @@ module top #(
 ) (
     input clk, // Clock signal
     input rst, // Reset signal
-    input PCSrc_in, // Temporary signal for PC flow control for testing
-    output [DATA_WIDTH-1:0] PC_out, // Temporary output for PC for testing
-    output [DATA_WIDTH-1:0] Instr_out // Temporary output for instruction for testing
+    input PCSrc_in // Temporary signal for PC flow control for testing
 );
 
 wire [DATA_WIDTH-1:0] PC;
@@ -20,8 +18,6 @@ wire PCSrc; //TODO: CONNECT TO CONTROL UNIT
 assign PCPlus4 = PC + 4; // Calculate PC + 4 for next instruction
 assign PCTarget = PC + 16; // Example target address for branch/jump (can be modified)
 assign PCSrc = PCSrc_in; // Temporary assignment for testing
-assign PC_out = PC; // Temporary output for testing
-assign Instr_out = Instr; // Temporary output for instruction for testing
 
 wire [DATA_WIDTH-1:0] PCNext = PCSrc ? PCTarget : PCPlus4;
 
@@ -40,6 +36,22 @@ instruction_memory #(
 ) IM (
     .A(PC),
     .RD(Instr)
+);
+
+wire [DATA_WIDTH-1:0] RD1;
+wire [DATA_WIDTH-1:0] RD2;
+
+register_file #(
+    .DATA_WIDTH(DATA_WIDTH)
+) RF(
+    .clk(clk),
+    .WE3(0),
+    .A1(Instr[19:15]), // rs1
+    .A2(0),
+    .A3(0),
+    .WD3(0),
+    .RD1(RD1),
+    .RD2(RD2)
 );
 
 endmodule

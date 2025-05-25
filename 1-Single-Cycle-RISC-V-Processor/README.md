@@ -20,3 +20,23 @@ The first stage in the single-cycle datapath is the **Instruction Fetch**. Durin
 The waveform below shows the behavior of the PC and instruction fetch signals during simulation.
 
 ![Instruction Fetch Waveform](./simulation_waveforms/step1_instruction_fetch.png)
+
+## Step 2: Read source operand (rs1) from RF
+
+The second stage in the single-cycle datapath is the **Register Read**. In this step, the processor reads the first source operand (`rs1`) from the register file, based on the instruction that was just fetched.
+
+### Modules involved:
+
+- **Register File:** Contains 32 general-purpose registers, each 32 bits wide. It supports two simultaneous reads and one write.
+
+### Process overview:
+
+- The instruction bits `[19:15]` specify the address of source register `rs1`.
+- This address (`A1`) is fed into the register file.
+- The register file outputs the 32-bit value stored at that register (`RD1`), which will later be used by the ALU or memory stages.
+
+### Simulation Waveform
+
+The waveform below shows the values being read from `rs1`, as well as how the address `A1` is derived from the instruction bits.
+
+![Register Read Waveform](./simulation_waveforms/step2_register_read_rs1.png)

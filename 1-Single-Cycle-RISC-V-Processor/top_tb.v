@@ -18,9 +18,7 @@ module top_tb();
     top DUT (
         .clk(clk),
         .rst(rst),
-		.PCSrc_in(PCSrc),
-        .PC_out(PC),
-        .Instr_out(Instr)
+		.PCSrc_in(PCSrc)
     );
 
     // Generate clock with 10ns period

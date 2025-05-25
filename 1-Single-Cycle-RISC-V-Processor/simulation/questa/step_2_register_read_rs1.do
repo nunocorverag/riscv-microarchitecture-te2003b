@@ -11,7 +11,7 @@ add wave -noupdate /top_tb/DUT/PCTarget
 add wave -noupdate /top_tb/DUT/PCPlus4
 add wave -noupdate /top_tb/DUT/PCNext
 add wave -noupdate -divider top_instr
-add wave -noupdate -radix binary /top_tb/DUT/Instr
+add wave -noupdate -radix binary /top_tb/DUT/instr
 add wave -noupdate -divider program_counter
 add wave -noupdate /top_tb/DUT/PC_REG/pc
 add wave -noupdate /top_tb/DUT/PC_REG/pcNext

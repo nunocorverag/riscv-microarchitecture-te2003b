@@ -15,10 +15,14 @@ module top_tb();
     // Control signal for PC flow (for testing)
     reg PCSrc;
 
+    // Control signal for immediate source selection (for testing)
+    reg [1:0] immSrc;
+
     top DUT (
         .clk(clk),
         .rst(rst),
-		.PCSrc_in(PCSrc)
+		.PCSrc_in(PCSrc),
+        .immSrc_in(immSrc)
     );
 
     // Generate clock with 10ns period
@@ -33,12 +37,15 @@ module top_tb();
         #10;
         rst = 1;
         #10;
-        PCSrc = 0; // Start sequential (PC + 4)
         rst = 0;
+        immSrc = 0; // I-type immediate
+        PCSrc = 0; // Start sequential (PC + 4)
         #10;
-        PCSrc = 1; // Simulate branch/jump (PC + 16)
+        immSrc = 1; // S-type immediate
         #10;
-        PCSrc = 0; // Return to sequential
+        immSrc = 2; // B-type immediate
+        #10;
+        immSrc = 3; // J-type immediate
         #10;
         $stop; // Stop simulation
     end

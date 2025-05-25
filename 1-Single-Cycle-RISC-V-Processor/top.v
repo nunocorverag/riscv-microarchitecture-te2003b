@@ -4,13 +4,14 @@ module top #(
 ) (
     input clk, // Clock signal
     input rst, // Reset signal
-    input PCSrc_in // Temporary signal for PC flow control for testing
+    input PCSrc_in, // Temporary signal for PC flow control for testing
+    input [1:0] immSrc_in // Temporary signal for immediate source selection for testing
 );
 
 wire [DATA_WIDTH-1:0] PC;
 wire [DATA_WIDTH-1:0] PCTarget;
 wire [DATA_WIDTH-1:0] PCPlus4;
-wire [DATA_WIDTH-1:0] Instr;
+wire [DATA_WIDTH-1:0] instr;
 
 wire PCSrc; //TODO: CONNECT TO CONTROL UNIT
 
@@ -35,7 +36,7 @@ instruction_memory #(
     .ADDR_WIDTH(ADDR_WIDTH)
 ) IM (
     .A(PC),
-    .RD(Instr)
+    .RD(instr)
 );
 
 wire [DATA_WIDTH-1:0] RD1;
@@ -46,12 +47,23 @@ register_file #(
 ) RF(
     .clk(clk),
     .WE3(0),
-    .A1(Instr[19:15]), // rs1
+    .A1(instr[19:15]), // rs1
     .A2(0),
     .A3(0),
     .WD3(0),
     .RD1(RD1),
     .RD2(RD2)
+);
+
+wire [1:0] immSrc; // TODO: CONNECT TO CONTROL UNIT
+
+assign immSrc = immSrc_in; // Temporary assignment for testing
+wire [31:0] immExt;
+
+immediate_generator IMM_GEN(
+    .instr(instr),
+    .immSrc(immSrc),
+    .immExt(immExt)
 );
 
 endmodule

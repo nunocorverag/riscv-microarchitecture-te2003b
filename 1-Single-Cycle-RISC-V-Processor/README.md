@@ -115,3 +115,80 @@ Immediate field:
 ➡ `immExt = 00000000000000011111000000000100`
 
 ![Immediate Extension - J-type](./simulation_waveforms/step3_immediate_j.png)
+
+---
+## Step 4: ALU Decoder & ALU Operations
+
+The fourth stage of the single-cycle datapath verifies both the **ALU Decoder** and the **ALU** modules, which are essential for performing arithmetic and logical operations depending on the RISC-V instruction format.
+
+---
+
+### 4.1 ALU Decoder
+
+The **ALU Decoder** determines which operation the ALU must perform based on control signals and instruction fields.
+
+#### Modules involved:
+- **ALU Decoder**
+
+#### Input Signals:
+- `alu_op`: A 2-bit control signal from the main decoder. It indicates the instruction category:
+  - `00` → Load/Store (ADD)
+  - `01` → Branch (SUB)
+  - `10` → R-type or I-type ALU operations
+- `funct3`, `funct7[5]`, `opcode[5]`: Fields from the instruction that identify the specific operation.
+
+#### Output Signal:
+- `alu_control`: A 3-bit signal that tells the ALU what operation to perform.
+
+#### Operation Mapping:
+- `3'b000`: ADD
+- `3'b001`: SUB
+- `3'b010`: AND
+- `3'b011`: OR
+- `3'b101`: SLT (Set Less Than)
+
+#### Simulation Waveform
+
+The simulation below demonstrates the correct generation of the `alu_control` signal for different combinations of `alu_op` and instruction fields:
+
+![ALU Decoder Simulation](./simulation_waveforms/step4_alu_decoder.png)
+
+---
+
+### 4.2 ALU (Arithmetic Logic Unit)
+
+The **ALU** executes arithmetic and logical operations between two operands based on the operation selected by `ALUControl`.
+
+#### Modules involved:
+- **ALU**
+
+#### Input Signals:
+- `SrcA`, `SrcB`: Operands (32-bit values)
+- `ALUControl`: Operation selector (3 bits)
+
+#### Output Signals:
+- `ALUResult`: The result of the selected operation.
+- `Zero`: Set to 1 if the result is 0.
+
+#### Supported Operations:
+- `3'b000`: ADD
+- `3'b001`: SUB
+- `3'b010`: AND
+- `3'b011`: OR
+- `3'b101`: SLT (signed comparison)
+- Any other value results in output = 0
+
+#### Simulation Waveform
+
+The waveform shows how the ALU handles various scenarios, including signed comparisons and bitwise operations:
+
+![ALU Simulation](./simulation_waveforms/step4_alu.png)
+
+---
+
+### Console Verification Output
+
+Below is the console output confirming that all expected `alu_control` and `ALUResult` values match the expected outputs. This validates the correctness of both modules:
+
+![Console ALU Decoder](./simulation_waveforms/step4_console_decoder.png)  
+![Console ALU](./simulation_waveforms/step4_console_alu.png)

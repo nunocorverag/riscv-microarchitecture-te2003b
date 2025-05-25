@@ -5,7 +5,9 @@ module top #(
     input clk, // Clock signal
     input rst, // Reset signal
     input PCSrc_in, // Temporary signal for PC flow control for testing
-    input [1:0] immSrc_in // Temporary signal for immediate source selection for testing
+    input [1:0] immSrc_in, // Temporary signal for immediate source selection for testing
+    input ALUSrc_in, // Temporary signal for ALU source selection
+    input [1:0] alu_op_in // Temporary signal for ALU operation type
 );
 
 wire [DATA_WIDTH-1:0] PC;
@@ -64,6 +66,37 @@ immediate_generator IMM_GEN(
     .instr(instr),
     .immSrc(immSrc),
     .immExt(immExt)
+);
+
+wire ALUSrc; // TODO: CONNECT TO CONTROL UNIT
+assign ALUSrc = ALUSrc_in; // Temporary assignment for testing
+
+wire [31:0] SrcA = RD1;
+wire [31:0] SrcB = ALUSrc ? immExt : RD2;
+
+// ALU Decoder
+wire [1:0] alu_op; // TODO: CONNECT TO CONTROL UNIT
+assign alu_op = alu_op_in; // Temporary assignment for testing
+
+wire [2:0] ALUControl;
+
+alu_decoder ALU_DEC(
+    .funct3(instr[14:12]),
+    .op_5(instr[5]),
+    .funct7_5(instr[30]),
+    .alu_op(alu_op),
+    .alu_control(ALUControl)
+);
+
+wire [31:0] ALUResult;
+wire Zero;
+
+ALU ALU_UNIT(
+    .SrcA(SrcA),
+    .SrcB(SrcB),
+    .ALUControl(ALUControl),
+    .ALUResult(ALUResult),
+    .Zero(Zero)
 );
 
 endmodule

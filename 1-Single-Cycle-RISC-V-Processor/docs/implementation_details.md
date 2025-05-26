@@ -19,7 +19,7 @@ The first stage in the single-cycle datapath is the **Instruction Fetch**. Durin
 
 The waveform below shows the behavior of the PC and instruction fetch signals during simulation.
 
-![Instruction Fetch Waveform](./simulation_waveforms/step1_instruction_fetch.png)
+![Instruction Fetch Waveform](../simulation_waveforms/step1_instruction_fetch.png)
 
 ## Step 2: Read source operand (rs1) from RF
 
@@ -39,7 +39,7 @@ The second stage in the single-cycle datapath is the **Register Read**. In this 
 
 The waveform below shows the values being read from `rs1`, as well as how the address `A1` is derived from the instruction bits.
 
-![Register Read Waveform](./simulation_waveforms/step2_register_read_rs1.png)
+![Register Read Waveform](../simulation_waveforms/step2_register_read_rs1.png)
 
 ## Step 3: Immediate Extension
 
@@ -70,7 +70,7 @@ Immediate field:
 `immExt = {{20{0}}, 000000001100}`  
 ➡ `immExt = 00000000000000000000000000001100`
 
-![Immediate Extension - I-type](./simulation_waveforms/step3_immediate_i.png)
+![Immediate Extension - I-type](../simulation_waveforms/step3_immediate_i.png)
 
 ---
 
@@ -84,7 +84,7 @@ Immediate field:
 `immExt = {{20{1}}, 1111111, 00111}`  
 ➡ `immExt = 11111111111111111111111111100111`
 
-![Immediate Extension - S-type](./simulation_waveforms/step3_immediate_s.png)
+![Immediate Extension - S-type](../simulation_waveforms/step3_immediate_s.png)
 
 ---
 
@@ -99,7 +99,7 @@ Immediate field:
 `immExt = {{19{0}}, 0, 0, 000000, 0010, 0}`  
 ➡ `immExt = 00000000000000000000000000000100`
 
-![Immediate Extension - B-type](./simulation_waveforms/step3_immediate_b.png)
+![Immediate Extension - B-type](../simulation_waveforms/step3_immediate_b.png)
 
 ---
 
@@ -114,7 +114,7 @@ Immediate field:
 `immExt = {{12{0}}, 00011111, 0, 0000000010, 0}`  
 ➡ `immExt = 00000000000000011111000000000100`
 
-![Immediate Extension - J-type](./simulation_waveforms/step3_immediate_j.png)
+![Immediate Extension - J-type](../simulation_waveforms/step3_immediate_j.png)
 
 ---
 ## Step 4: ALU Decoder & ALU Operations
@@ -151,7 +151,7 @@ The **ALU Decoder** determines which operation the ALU must perform based on con
 
 The simulation below demonstrates the correct generation of the `alu_control` signal for different combinations of `alu_op` and instruction fields:
 
-![ALU Decoder Simulation](./simulation_waveforms/step4_alu_decoder.png)
+![ALU Decoder Simulation](../simulation_waveforms/step4_alu_decoder.png)
 
 ---
 
@@ -182,7 +182,7 @@ The **ALU** executes arithmetic and logical operations between two operands base
 
 The waveform shows how the ALU handles various scenarios, including signed comparisons and bitwise operations:
 
-![ALU Simulation](./simulation_waveforms/step4_alu.png)
+![ALU Simulation](../simulation_waveforms/step4_alu.png)
 
 ---
 
@@ -190,8 +190,8 @@ The waveform shows how the ALU handles various scenarios, including signed compa
 
 Below is the console output confirming that all expected `alu_control` and `ALUResult` values match the expected outputs. This validates the correctness of both modules:
 
-![Console ALU Decoder](./simulation_waveforms/step4_console_decoder.png)  
-![Console ALU](./simulation_waveforms/step4_console_alu.png)
+![Console ALU Decoder](../simulation_waveforms/step4_console_decoder.png)  
+![Console ALU](../simulation_waveforms/step4_console_alu.png)
 
 ## Step 5: Read Data from Memory and Write Back to Register File
 
@@ -231,7 +231,7 @@ In the waveform shown below:
 - Then, `lw x3, 8(x0)` reads that value from memory and writes it into register `x3`.
 - All control signals (`ALUSrc`, `MemWrite`, `RegWrite`, `MemToReg`) are correctly asserted for each instruction.
 
-![Step 5 Memory Writeback](./simulation_waveforms/step5_memory_writeback.png)
+![Step 5 Memory Writeback](../simulation_waveforms/step5_memory_writeback.png)
 
 This confirms that the processor correctly implements memory read operations and properly routes the result back to the register file, completing the fifth step of the single-cycle execution path.
 
@@ -239,7 +239,7 @@ This confirms that the processor correctly implements memory read operations and
 
 The simulation log confirms the correct values of memory and register file at each step:
 
-![Console Output](./simulation_waveforms/step5_console_output.png)
+![Console Output](../simulation_waveforms/step5_console_output.png)
 
 ## Final Instruction Execution Summary
 
@@ -298,4 +298,4 @@ beq x2, x2, 0
 
 The following waveform shows the final execution loop and register/memory state:
 
-![Console Output](./simulation_waveforms/final_execution.png)
+![Console Output](../simulation_waveforms/final_execution.png)

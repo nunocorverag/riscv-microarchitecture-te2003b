@@ -115,3 +115,7 @@ This project implements a simple 32-bit RISC-V “RV32I”-style processor in Ve
 ## Datapath Diagram
 
 ![Full Datapath and Control Flow](diagrams/r5_single_cycle_datapath.png)
+
+---
+
+For implementation details and project workflow, see [docs/implementation_details.md](docs/implementation_details.md)

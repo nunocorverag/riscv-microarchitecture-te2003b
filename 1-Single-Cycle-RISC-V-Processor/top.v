@@ -3,30 +3,33 @@ module top #(
     parameter ADDR_WIDTH = 8
 ) (
     input clk, // Clock signal
-    input rst, // Reset signal
-    input PCSrc_in, // Temporary signal for PC flow control for testing
-    input [1:0] immSrc_in, // Temporary signal for immediate source selection for testing
-    input ALUSrc_in, // Temporary signal for ALU source selection
-    input [1:0] alu_op_in, // Temporary signal for ALU operation type
-    input MemWrite_in, // Temporary signal for memory write enable
-    input RegWrite_in, // Temporary signal for register write enable
-    input MemToReg_in, // Signal to select between ALU result and memory data
-    input [31:0] instr_in // Temporary signal for instruction input    
+    input rst  // Reset signal
 );
 
+// ==================== WIRES ====================
 wire [DATA_WIDTH-1:0] PC;
 wire [DATA_WIDTH-1:0] PCTarget;
 wire [DATA_WIDTH-1:0] PCPlus4;
 wire [DATA_WIDTH-1:0] instr;
 wire PCSrc;
 
-// Temporary signals for testing
-assign PCPlus4 = PC + 4; // Calculate PC + 4 for next instruction
-assign PCTarget = PC + 16; // Example target address for branch/jump (can be modified)
-assign PCSrc = PCSrc_in; // Temporary assignment for testing
+// Control signals from control unit
+wire branch, jump, mem_write, alu_src, reg_write;
+wire [1:0] result_src, imm_src;
+wire [2:0] alu_control;
 
+// Datapath wires
+wire [DATA_WIDTH-1:0] RD1, RD2;
+wire [31:0] immExt;
+wire [31:0] SrcA, SrcB;
+wire [31:0] ALUResult;
+wire Zero;
+wire [31:0] ReadData;
+wire [31:0] WriteData;
+
+// ==================== PC LOGIC ====================
+// Mux: PCSrc - Select next PC (PCPlus4 or PCTarget)
 wire [DATA_WIDTH-1:0] PCNext = PCSrc ? PCTarget : PCPlus4;
-wire [DATA_WIDTH-1:0] ReadData; // Data read from memory
 
 program_counter #(
     .DATA_WIDTH(DATA_WIDTH)
@@ -37,79 +40,90 @@ program_counter #(
     .pc(PC)
 );
 
-// TODO: Replace with no hardcoded instruction for testing
-assign instr = instr_in; // Temporary assignment for testing
+// ==================== INSTRUCTION FETCH ====================
+instruction_memory #(
+    .DATA_WIDTH(DATA_WIDTH),
+    .ADDR_WIDTH(ADDR_WIDTH)
+) IM (
+    .A(PC),
+    .RD(instr)
+);
 
-wire [DATA_WIDTH-1:0] RD1;
-wire [DATA_WIDTH-1:0] RD2;
-wire RegWrite;
-assign RegWrite = RegWrite_in; // Temporary assignment for testing
+// ==================== CONTROL UNIT ====================
+control_unit CU (
+    .zero(Zero),
+    .op(instr[6:0]),
+    .clk(clk),
+    .funct3(instr[14:12]),
+    .funct7_5(instr[30]),
+    .branch(branch),
+    .jump(jump),
+    .mem_write(mem_write),
+    .alu_src(alu_src),
+    .reg_write(reg_write),
+    .result_src(result_src),
+    .imm_src(imm_src),
+    .alu_control(alu_control),
+    .PCSrc(PCSrc)
+);
 
-// Add MemToReg signal and multiplexer for write data selection
-wire MemToReg;
-assign MemToReg = MemToReg_in;
-wire [DATA_WIDTH-1:0] ALUResult;
-wire [DATA_WIDTH-1:0] WriteData = MemToReg ? ReadData : ALUResult; // Select between memory and ALU result
+// ==================== REGISTER FILE ====================
+// Write data selection: ALU result, Memory data, or PC+4
+assign WriteData = (result_src == 2'b00) ? ALUResult :
+                   (result_src == 2'b01) ? ReadData :
+                   (result_src == 2'b10) ? PCPlus4 : 32'b0;
 
 register_file #(
     .DATA_WIDTH(DATA_WIDTH)
 ) RF(
     .clk(clk),
-    .WE3(RegWrite),
+    .WE3(reg_write),
     .A1(instr[19:15]), // rs1
-    .A2(instr[24:20]), // rs2 - FIXED: was hardcoded to 0
-    .A3(instr[11:7]), // rd
-    .WD3(WriteData), // FIXED: Now uses WriteData instead of ReadData
+    .A2(instr[24:20]), // rs2
+    .A3(instr[11:7]),  // rd
+    .WD3(WriteData),
     .RD1(RD1),
     .RD2(RD2)
 );
 
-wire [1:0] immSrc;
-assign immSrc = immSrc_in; // Temporary assignment for testing
-wire [31:0] immExt;
-
+// ==================== IMMEDIATE GENERATOR ====================
 immediate_generator IMM_GEN(
     .instr(instr),
-    .immSrc(immSrc),
+    .immSrc(imm_src),
     .immExt(immExt)
 );
 
-wire ALUSrc;
-assign ALUSrc = ALUSrc_in; // Temporary assignment for testing
-wire [31:0] SrcA = RD1;
-wire [31:0] SrcB = ALUSrc ? immExt : RD2;
-
-// ALU Decoder
-wire [1:0] alu_op;
-assign alu_op = alu_op_in; // Temporary assignment for testing
-wire [2:0] ALUControl;
-
-alu_decoder ALU_DEC(
-    .funct3(instr[14:12]),
-    .op_5(instr[5]),
-    .funct7_5(instr[30]),
-    .alu_op(alu_op),
-    .alu_control(ALUControl)
+// ==================== PC CALCULATION ====================
+pc_plus4 #(.WIDTH(DATA_WIDTH)) PC_PLUS4_UNIT (
+    .PC(PC),
+    .PCPlus4(PCPlus4)
 );
 
-wire Zero;
+pc_target #(.WIDTH(DATA_WIDTH)) PC_TARGET_UNIT (
+    .PC(PC),
+    .immExt(immExt),
+    .PCTarget(PCTarget)
+);
+
+// ==================== ALU ====================
+assign SrcA = RD1;
+// MUX ALUSrc: Select ALU input B (register or immediate)
+assign SrcB = alu_src ? immExt : RD2;
 
 ALU ALU_UNIT(
     .SrcA(SrcA),
     .SrcB(SrcB),
-    .ALUControl(ALUControl),
+    .ALUControl(alu_control),
     .ALUResult(ALUResult),
     .Zero(Zero)
 );
 
-wire MemWrite;
-assign MemWrite = MemWrite_in; // Temporary assignment for testing
-
+// ==================== DATA MEMORY ====================
 data_memory #(
     .DATA_WIDTH(DATA_WIDTH)
 ) DMEM (
     .clk(clk),
-    .WE(MemWrite),
+    .WE(mem_write),
     .A(ALUResult),
     .WD(RD2),
     .RD(ReadData)

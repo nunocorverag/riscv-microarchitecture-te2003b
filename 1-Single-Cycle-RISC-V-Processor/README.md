@@ -240,3 +240,62 @@ This confirms that the processor correctly implements memory read operations and
 The simulation log confirms the correct values of memory and register file at each step:
 
 ![Console Output](./simulation_waveforms/step5_console_output.png)
+
+## Final Instruction Execution Summary
+
+The following instructions were successfully executed during simulation, confirming the correctness of all stages in the single-cycle RISC-V processor:
+
+### Registers Written
+
+| PC       | Instruction             | Register | Final Value (Hex) |
+|----------|--------------------------|----------|--------------------|
+| `0x00`   | `addi x2, x0, 5`         | x2       | `0x00000005`       |
+| `0x04`   | `addi x3, x0, 12`        | x3       | `0x0000000C`       |
+| `0x08`   | `addi x7, x3, -9`        | x7       | `0x00000003`       |
+| `0x0C`   | `or x4, x7, x2`          | x4       | `0x00000007`       |
+| `0x10`   | `and x5, x3, x4`         | x5       | `0x00000004`       |
+| `0x14`   | `add x5, x5, x4`         | x5       | `0x0000000B`       |
+| `0x1C`   | `slt x4, x3, x4`         | x4       | `0x00000000`       |
+| `0x28`   | `slt x4, x7, x2`         | x4       | `0x00000001`       |
+| `0x2C`   | `add x7, x4, x5`         | x7       | `0x0000000C`       |
+| `0x30`   | `sub x7, x7, x2`         | x7       | `0x00000007`       |
+| `0x38`   | `lw x2, 96(x0)`          | x2       | `0x00000007`       |
+| `0x3C`   | `add x9, x2, x5`         | x9       | `0x00000012`       |
+| `0x40`   | `jal x3, 8`              | x3       | `0x00000044`       |
+| `0x48`   | `addi x2, x0, 1`         | x2       | `0x00000001`       |
+| `0x4C`   | `add x2, x2, x9`         | x2       | `0x00000013`       |
+
+### Final Register State
+
+| Register | Value (Hex)   | Description                  |
+|----------|---------------|------------------------------|
+| `x2`     | `0x00000013`  | After last add x2, x2, x9    |
+| `x3`     | `0x00000044`  | Return address from `jal`    |
+| `x4`     | `0x00000001`  | Result from last `slt`       |
+| `x5`     | `0x0000000B`  | Final result of add ops      |
+| `x7`     | `0x00000007`  | Result from `sub x7, x7, x2` |
+| `x9`     | `0x00000012`  | Result from `add x9, x2, x5` |
+
+### Memory Operations
+
+| PC       | Instruction              | Address (Hex) | Value Written (Hex) |
+|----------|--------------------------|----------------|----------------------|
+| `0x34`   | `sw x7, 20(x3)`          | `0x00000020`   | `0x00000007`         |
+| `0x50`   | `sw x2, 4(x3)`           | `0x00000048`   | `0x00000013`         |
+| `0x38`   | `lw x2, 96(x0)`          | `0x00000060`   | `0x00000007` (initial value) |
+
+Note: At the time of `jal`, register `x3` is set to `0x00000044`, which is the correct return address (PC + 4).
+
+### Final Instruction Behavior
+
+The final instruction at PC = `0x00000054` is:
+
+```assembly
+beq x2, x2, 0
+```
+
+### Simulation Waveform
+
+The following waveform shows the final execution loop and register/memory state:
+
+![Console Output](./simulation_waveforms/final_execution.png)

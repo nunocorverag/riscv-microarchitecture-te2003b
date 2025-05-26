@@ -192,3 +192,51 @@ Below is the console output confirming that all expected `alu_control` and `ALUR
 
 ![Console ALU Decoder](./simulation_waveforms/step4_console_decoder.png)  
 ![Console ALU](./simulation_waveforms/step4_console_alu.png)
+
+## Step 5: Read Data from Memory and Write Back to Register File
+
+The fifth stage in the single-cycle datapath tests the ability of the processor to perform memory access and write the retrieved data back into the register file.
+
+This step corresponds to the execution of load-type instructions, such as `lw`, which involve reading from memory at a calculated address and storing the result in a destination register.
+
+### Modules involved:
+
+- **Data Memory:** A memory module supporting combinational reads and synchronous writes. It stores and retrieves data used during `lw` and `sw` operations.
+- **Register File:** Stores the results of computations and memory loads. Supports one synchronous write per cycle.
+
+### Process overview:
+
+1. The ALU computes the target memory address using base register (`rs1`) and an immediate offset.
+2. In the case of a `lw` (load word) instruction:
+   - The memory address is sent to the **Data Memory** module.
+   - The data located at that address is returned immediately through a combinational read.
+   - This value is then passed through a multiplexer controlled by `MemToReg`.
+   - If `MemToReg = 1`, the value from memory is selected as the input to the **Register File** for writing.
+3. The destination register (`rd`) is updated with the data read from memory, provided that `RegWrite = 1` and `rd != 0`.
+
+### Instruction Example
+
+```assembly
+addi x2, x0, 5       // Write 5 into register x2
+sw x2, 8(x0)         // Store x2 into memory address 8
+lw x3, 8(x0)         // Load from memory address 8 into x3
+```
+
+### Simulation Verification
+
+In the waveform shown below:
+
+- The register `x2` is correctly written with value 5.
+- The value is stored in memory address 8 using the `sw` instruction.
+- Then, `lw x3, 8(x0)` reads that value from memory and writes it into register `x3`.
+- All control signals (`ALUSrc`, `MemWrite`, `RegWrite`, `MemToReg`) are correctly asserted for each instruction.
+
+![Step 5 Memory Writeback](./simulation_waveforms/step5_memory_writeback.png)
+
+This confirms that the processor correctly implements memory read operations and properly routes the result back to the register file, completing the fifth step of the single-cycle execution path.
+
+### Console Output
+
+The simulation log confirms the correct values of memory and register file at each step:
+
+![Console Output](./simulation_waveforms/step5_console_output.png)

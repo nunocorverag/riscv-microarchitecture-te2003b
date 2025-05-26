@@ -14,8 +14,12 @@ module instruction_memory #(
 // Internal ROM storage for instructions
 reg [DATA_WIDTH-1:0] ROM [(2**ADDR_WIDTH)-1:0];
 
-// Load instructions from external file at simulation start
+// Initialize ROM to zero before loading from file
+integer i;
 initial begin
+    for (i = 0; i < (2**ADDR_WIDTH); i = i + 1) begin
+        ROM[i] = 32'b0;
+    end
     $readmemh("instructions.hex", ROM); // Load instructions from file
 end
 

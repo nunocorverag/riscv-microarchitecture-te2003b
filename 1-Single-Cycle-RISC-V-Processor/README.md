@@ -1,7 +1,7 @@
-# RISC-V Mini CPU Project
+# RISC-V Single Cycle processor in Verilog
 
 **Overview**  
-This project implements a simple 32-bit RISC-V “RV32I”-style processor in Verilog.  It includes all major datapath components, a top-level integration (`top.v`), and a comprehensive testbench (`top_tb.v`) to verify functionality.
+This project implements a simple 32-bit RISC-V Single Cycle processor in Verilog. It includes all major datapath components, a top-level integration (`top.v`), and a testbench (`top_tb.v`) to verify functionality.
 
 ---
 

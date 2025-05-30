@@ -25,12 +25,12 @@ module top_tb();
         #10;
         rst = 0;
 
-        #500;
+        #200;
 
         $display("=== CONTENIDO DE MEMORIA (0x000 a 0x3FF) ===");
         for (j = 0; j < 1024; j = j + 1) begin
             $display("Mem[0x%03h] = 0x%08h", j, DUT.DMEM.Data_mem[j]);
         end
-        $finish;
+        $stop;
     end
 endmodule

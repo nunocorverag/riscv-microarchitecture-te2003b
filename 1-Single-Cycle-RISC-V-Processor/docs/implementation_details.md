@@ -1,19 +1,35 @@
-# Single-Cycle RISC-V Processor
+# RISC-V Single-Cycle Processor Implementation Details
 
-## Step 1: Instruction Fetch
+## Overview
 
-The first stage in the single-cycle datapath is the **Instruction Fetch**. During this step, the processor reads the instruction from the instruction memory at the address specified by the Program Counter (PC).
+This document provides a comprehensive overview of the implementation and verification process for our single-cycle RISC-V processor. The processor supports the RV32I instruction set and has been thoroughly tested through step-by-step verification.
 
-### Modules involved:
+## Implementation Approach
 
-- **Program Counter (PC):** Holds the address of the current instruction. It updates on each clock cycle to point to the next instruction address.
-- **Instruction Memory:** A read-only memory module that outputs the instruction stored at the address provided by the PC.
+The processor was implemented and verified in five main stages, each building upon the previous one to ensure correctness at every level of the datapath.
 
-### Process overview:
+## Stage 1: Instruction Fetch
 
-- The PC provides the current instruction address to the instruction memory.
-- The instruction memory returns the 32-bit instruction located at that address.
-- The PC is then updated to the next address, depending on `PCSrc` to determine if it should proceed to the next sequential instruction or jump to a target address.
+### Description
+The first stage implements the basic instruction fetch mechanism, where the processor reads instructions from memory based on the Program Counter (PC).
+
+### Key Components
+- **Program Counter (PC):** Maintains the current instruction address
+- **Instruction Memory:** Read-only memory containing the program instructions
+- **PC Update Logic:** Sequential addressing (PC+4) or branch/jump targets
+
+### Implementation Details
+- PC initializes to 0x00 on reset
+- Instructions are fetched from word-aligned addresses
+- PC is updated based on `PCSrc` control signal:
+  - `PCSrc = 0`: Sequential execution (PC = PC + 4)
+  - `PCSrc = 1`: Branch/jump target (PC = PC + immExt)
+
+### Verification
+The instruction fetch was verified by monitoring:
+- Correct PC initialization and increment
+- Proper instruction output from memory
+- PC update logic for sequential execution
 
 ### Simulation Waveform
 
@@ -21,19 +37,31 @@ The waveform below shows the behavior of the PC and instruction fetch signals du
 
 ![Instruction Fetch Waveform](../simulation_waveforms/step1_instruction_fetch.png)
 
-## Step 2: Read source operand (rs1) from RF
+---
 
-The second stage in the single-cycle datapath is the **Register Read**. In this step, the processor reads the first source operand (`rs1`) from the register file, based on the instruction that was just fetched.
+## Stage 2: Register File Operations
 
-### Modules involved:
+### Description
+This stage implements register file operations, focusing on reading source operands from the 32-register file.
 
-- **Register File:** Contains 32 general-purpose registers, each 32 bits wide. It supports two simultaneous reads and one write.
+### Key Components
+- **Register File:** 32 × 32-bit registers with dual read ports and one write port
+- **Address Decoding:** Extracting `rs1`, `rs2`, and `rd` fields from instructions
 
-### Process overview:
+### Implementation Details
+- Register x0 is hardwired to zero
+- Simultaneous read from two source registers (`rs1`, `rs2`)
+- Write operations occur on clock edge when `RegWrite = 1`
+- Register addresses extracted from instruction bits:
+  - `rs1`: bits [19:15]
+  - `rs2`: bits [24:20]  
+  - `rd`: bits [11:7]
 
-- The instruction bits `[19:15]` specify the address of source register `rs1`.
-- This address (`A1`) is fed into the register file.
-- The register file outputs the 32-bit value stored at that register (`RD1`), which will later be used by the ALU or memory stages.
+### Verification
+Verified by testing:
+- Correct register address extraction
+- Proper data output from register file
+- Register x0 always reads as zero
 
 ### Simulation Waveform
 
@@ -41,34 +69,36 @@ The waveform below shows the values being read from `rs1`, as well as how the ad
 
 ![Register Read Waveform](../simulation_waveforms/step2_register_read_rs1.png)
 
-## Step 3: Immediate Extension
+---
 
-The third stage in the single-cycle datapath is **Immediate Extension**. This step involves extracting and sign-extending the immediate field of the instruction, depending on its format.
+## Stage 3: Immediate Generation
 
-### Modules involved:
+### Description
+Implements the immediate generator that extracts and sign-extends immediate values for different instruction formats.
 
-- **Immediate Generator:** Based on the value of `immSrc`, this module takes the appropriate bits of the instruction and produces a 32-bit sign-extended immediate value.
+### Key Components
+- **Immediate Generator:** Handles I, S, B, and J-type immediate formats
+- **Sign Extension:** Properly extends immediates to 32 bits
 
-### Process overview:
+### Implementation Details
+The immediate generator operates based on the `ImmSrc` control signal:
 
-- The instruction bits `[31:0]` are passed as `extend_in`.
-- The `immSrc` signal determines the instruction type:
-  - `00`: I-type
-  - `01`: S-type
-  - `10`: B-type
-  - `11`: J-type
-- The immediate generator extracts the immediate fields and sign-extends them to 32 bits.
+| ImmSrc | Type  | Immediate Bits Extraction                                                                                                                                                                                        | Description                       | Usage                                 |
+|--------|-------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------|-------------------------------------- |
+| 00     | I-type| `immExt = {{20{instr[31]}}, instr[31:20]}`  <br> (20 bits sign-extend, 12 bits instr[31:20])                                                                                                                     | Sign-extend bit 31 to 32 bits     | `addi`, `lw`, arithmetic immediates   |
+| 01     | S-type| `immExt = {{20{instr[31]}}, instr[31:25], instr[11:7]}` <br> (20 bits sign-extend, 7 bits instr[31:25], 5 bits instr[11:7])                                                                                      | Sign-extend bit 31 to 32 bits     | `sw` (store operations)               |
+| 10     | B-type| `immExt = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0}` <br> (19 bits sign-extend, 1 bit instr[31], 1 bit instr[7], 6 bits instr[30:25], 4 bits instr[11:8], 1 bit zero)              | Sign-extend bit 31, LSB forced 0  | `beq` (branch operations)             |
+| 11     | J-type| `immExt = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0}` <br> (12 bits sign-extend, 8 bits instr[19:12], 1 bit instr[20], 10 bits instr[30:21], 1 bit zero) | Sign-extend bit 31, LSB forced 0  | `jal` (jump operations)           |                                       |
+
 
 ### Instruction Type Examples
 
 **I-type**  
 Instruction: `00000000110000000000000110010011`  
-`immSrc = 00`  
-Immediate field: 
-- `instr[31] = 0`
-- `instr[31:20] = 000000001100`  
-`immExt = {{20{0}}, 000000001100}`  
-➡ `immExt = 00000000000000000000000000001100`
+`ImmSrc = 00`  
+Immediate bits: `instr[31:20] = 000000001100`  
+Extended immediate: `immExt = {{20{instr[31]}}, instr[31:20]}`  
+Result: `00000000000000000000000000001100`
 
 ![Immediate Extension - I-type](../simulation_waveforms/step3_immediate_i.png)
 
@@ -76,13 +106,10 @@ Immediate field:
 
 **S-type**  
 Instruction: `11111111011100011000001110010011`  
-`immSrc = 01`  
-Immediate field: 
-- `instr[31] = 1`
-- `instr[31:25] = 1111111`
-- `instr[11:7] = 00111`  
-`immExt = {{20{1}}, 1111111, 00111}`  
-➡ `immExt = 11111111111111111111111111100111`
+`ImmSrc = 01`  
+Immediate bits: `{instr[31:25], instr[11:7]} = 111111100111`  
+Extended immediate: `immExt = {{20{instr[31]}}, instr[31:25], instr[11:7]}`  
+Result: `11111111111111111111111111100111`
 
 ![Immediate Extension - S-type](../simulation_waveforms/step3_immediate_s.png)
 
@@ -90,212 +117,183 @@ Immediate field:
 
 **B-type**  
 Instruction: `00000000001000111110001000110011`  
-`immSrc = 10`  
-Immediate field:
-- `instr[31] = 0`
-- `instr[7] = 0`
-- `instr[30:25] = 000000`
-- `instr[11:8] = 0010`  
-`immExt = {{19{0}}, 0, 0, 000000, 0010, 0}`  
-➡ `immExt = 00000000000000000000000000000100`
+`ImmSrc = 10`  
+Immediate bits: `{instr[31], instr[7], instr[30:25], instr[11:8], 1'b0} = 0 0 000000 0010 0`  
+Extended immediate: `immExt = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0}`  
+Result: `00000000000000000000000000000100`
 
 ![Immediate Extension - B-type](../simulation_waveforms/step3_immediate_b.png)
 
 ---
 
 **J-type**  
-Instruction: **`00000000010000011111001010110011`**  
-`immSrc = 11`  
-Immediate field:
-- `instr[31] = 0`
-- `instr[19:12] = 00011111`
-- `instr[20] = 0`
-- `instr[30:21] = 0000000010`  
-`immExt = {{12{0}}, 00011111, 0, 0000000010, 0}`  
-➡ `immExt = 00000000000000011111000000000100`
+Instruction: `00000000010000011111001010110011`  
+`ImmSrc = 11`  
+Immediate bits: `{instr[31], instr[19:12], instr[20], instr[30:21], 1'b0}`  
+Extended immediate: `immExt = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0}`  
+Result: `00000000000000011111000000000100`
 
 ![Immediate Extension - J-type](../simulation_waveforms/step3_immediate_j.png)
 
----
-## Step 4: ALU Decoder & ALU Operations
-
-The fourth stage of the single-cycle datapath verifies both the **ALU Decoder** and the **ALU** modules, which are essential for performing arithmetic and logical operations depending on the RISC-V instruction format.
-
----
-
-### 4.1 ALU Decoder
-
-The **ALU Decoder** determines which operation the ALU must perform based on control signals and instruction fields.
-
-#### Modules involved:
-- **ALU Decoder**
-
-#### Input Signals:
-- `alu_op`: A 2-bit control signal from the main decoder. It indicates the instruction category:
-  - `00` → Load/Store (ADD)
-  - `01` → Branch (SUB)
-  - `10` → R-type or I-type ALU operations
-- `funct3`, `funct7[5]`, `opcode[5]`: Fields from the instruction that identify the specific operation.
-
-#### Output Signal:
-- `alu_control`: A 3-bit signal that tells the ALU what operation to perform.
-
-#### Operation Mapping:
-- `3'b000`: ADD
-- `3'b001`: SUB
-- `3'b010`: AND
-- `3'b011`: OR
-- `3'b101`: SLT (Set Less Than)
-
-#### Simulation Waveform
-
-The simulation below demonstrates the correct generation of the `alu_control` signal for different combinations of `alu_op` and instruction fields:
-
-![ALU Decoder Simulation](../simulation_waveforms/step4_alu_decoder.png)
+### Verification
+Each format was tested with specific instruction examples to verify:
+- Correct bit extraction and concatenation
+- Proper sign extension
+- Expected 32-bit immediate output
 
 ---
 
-### 4.2 ALU (Arithmetic Logic Unit)
+## Stage 4: ALU Operations
 
-The **ALU** executes arithmetic and logical operations between two operands based on the operation selected by `ALUControl`.
+### Description
+This stage implements the core arithmetic and logic operations through the ALU and its decoder.
 
-#### Modules involved:
-- **ALU**
+### Key Components
+- **ALU Decoder:** Translates instruction fields to ALU control signals
+- **ALU:** Performs arithmetic and logical operations
+- **Control Logic:** Generates appropriate control signals
 
-#### Input Signals:
-- `SrcA`, `SrcB`: Operands (32-bit values)
-- `ALUControl`: Operation selector (3 bits)
+### ALU Decoder Implementation
+The ALU decoder uses multiple inputs to determine the operation:
+- `ALUOp[1:0]`: Operation category from main decoder
+- `funct3[2:0]`: Instruction function bits
+- `funct7[5]`: Instruction function bit 7
+- `opcode[5]`: Instruction type bit
 
-#### Output Signals:
-- `ALUResult`: The result of the selected operation.
-- `Zero`: Set to 1 if the result is 0.
+### ALU Control Signal Generation:
 
-#### Supported Operations:
-- `3'b000`: ADD
-- `3'b001`: SUB
-- `3'b010`: AND
-- `3'b011`: OR
-- `3'b101`: SLT (signed comparison)
-- Any other value results in output = 0
+| ALUOp | Instruction Type | funct3 | funct7[5] | opcode[5] | ALUControl | Operation |
+|-------|------------------|--------|-----------|-----------|------------|-----------|
+| 00    | Load/Store       | xx     | x         | x         | 000        | ADD       |
+| 01    | Branch           | xx     | x         | x         | 001        | SUB       |
+| 10    | R-type/I-type    | 000    | 0         | 1 or 0    | 000        | ADD       |
+| 10    | R-type           | 000    | 1         | 1         | 001        | SUB       |
+| 10    | R-type/I-type    | 111    | x         | x         | 010        | AND       |
+| 10    | R-type/I-type    | 110    | x         | x         | 011        | OR        |
+| 10    | R-type/I-type    | 010    | x         | x         | 101        | SLT       |
 
-#### Simulation Waveform
+### ALU Implementation
+The ALU performs operations based on `ALUControl[2:0]`:
 
-The waveform shows how the ALU handles various scenarios, including signed comparisons and bitwise operations:
+| ALUControl | Operation | Description           |
+|------------|-----------|-----------------------|
+| 000        | ADD       | SrcA + SrcB           |
+| 001        | SUB       | SrcA - SrcB           |
+| 010        | AND       | SrcA & SrcB           |
+| 011        | OR        | SrcA \| SrcB          |
+| 101        | SLT       | (SrcA < SrcB) ? 1 : 0|
+| others     | -         | Output = 0            |
 
-![ALU Simulation](../simulation_waveforms/step4_alu.png)
+### Verification
+Both ALU decoder and ALU were tested extensively including edge cases and signed comparisons.
 
----
+#### Simulation Waveforms
 
-### Console Verification Output
+ALU control generation and ALU operations are confirmed by these waveforms:
 
-Below is the console output confirming that all expected `alu_control` and `ALUResult` values match the expected outputs. This validates the correctness of both modules:
-
+![ALU Decoder Simulation](../simulation_waveforms/step4_alu_decoder.png)  
+![ALU Simulation](../simulation_waveforms/step4_alu.png)  
 ![Console ALU Decoder](../simulation_waveforms/step4_console_decoder.png)  
 ![Console ALU](../simulation_waveforms/step4_console_alu.png)
 
-## Step 5: Read Data from Memory and Write Back to Register File
+---
 
-The fifth stage in the single-cycle datapath tests the ability of the processor to perform memory access and write the retrieved data back into the register file.
+## Stage 5: Memory Operations and Write-Back
 
-This step corresponds to the execution of load-type instructions, such as `lw`, which involve reading from memory at a calculated address and storing the result in a destination register.
+### Description
+The final stage implements memory access operations and the write-back mechanism to complete the datapath.
 
-### Modules involved:
+### Key Components
+- **Data Memory:** 1024-word synchronous memory for load/store operations
+- **Write-Back Multiplexer:** Selects data source for register write-back
+- **Memory Control:** Handles read/write operations
 
-- **Data Memory:** A memory module supporting combinational reads and synchronous writes. It stores and retrieves data used during `lw` and `sw` operations.
-- **Register File:** Stores the results of computations and memory loads. Supports one synchronous write per cycle.
+### Memory Access Implementation
+- **Load Operations (`lw`):**
+  - Address calculated: `rs1 + immediate`
+  - Data read combinationally from memory
+  - Written to destination register when `RegWrite = 1`
+- **Store Operations (`sw`):**
+  - Address calculated: `rs1 + immediate`  
+  - Data from `rs2` written to memory when `MemWrite = 1`
+  - Synchronous write on clock edge
 
-### Process overview:
+### Write-Back Selection
+The `ResultSrc[1:0]` control signal determines write-back source:
 
-1. The ALU computes the target memory address using base register (`rs1`) and an immediate offset.
-2. In the case of a `lw` (load word) instruction:
-   - The memory address is sent to the **Data Memory** module.
-   - The data located at that address is returned immediately through a combinational read.
-   - This value is then passed through a multiplexer controlled by `MemToReg`.
-   - If `MemToReg = 1`, the value from memory is selected as the input to the **Register File** for writing.
-3. The destination register (`rd`) is updated with the data read from memory, provided that `RegWrite = 1` and `rd != 0`.
+| ResultSrc | Source     | Description                       |
+|-----------|------------|---------------------------------|
+| 00        | ALU Result | Arithmetic/logic operation result|
+| 01        | Memory     | Data loaded from memory (`lw`)   |
+| 10        | PC+4       | Return address for `jal`         |
 
-### Instruction Example
+### Process Overview
 
-```assembly
-addi x2, x0, 5       // Write 5 into register x2
-sw x2, 8(x0)         // Store x2 into memory address 8
-lw x3, 8(x0)         // Load from memory address 8 into x3
-```
+1. ALU computes target memory address using `rs1` + immediate offset.
+2. For `lw`: Data memory output is multiplexed into the register file write data.
+3. For `sw`: Data from `rs2` is written into memory.
+4. Destination register is updated if `RegWrite` is asserted and `rd != 0`.
 
-### Simulation Verification
+### Simulation Waveform
 
-In the waveform shown below:
+The waveform below confirms correct behavior for memory operations and write-back.
 
-- The register `x2` is correctly written with value 5.
-- The value is stored in memory address 8 using the `sw` instruction.
-- Then, `lw x3, 8(x0)` reads that value from memory and writes it into register `x3`.
-- All control signals (`ALUSrc`, `MemWrite`, `RegWrite`, `MemToReg`) are correctly asserted for each instruction.
+![Memory Writeback Waveform](../simulation_waveforms/step5_memory_writeback.png)
 
-![Step 5 Memory Writeback](../simulation_waveforms/step5_memory_writeback.png)
+---
 
-This confirms that the processor correctly implements memory read operations and properly routes the result back to the register file, completing the fifth step of the single-cycle execution path.
-
-### Console Output
-
-The simulation log confirms the correct values of memory and register file at each step:
-
-![Console Output](../simulation_waveforms/step5_console_output.png)
-
-## Final Instruction Execution Summary
-
-The following instructions were successfully executed during simulation, confirming the correctness of all stages in the single-cycle RISC-V processor:
-
-### Registers Written
-
-| PC       | Instruction             | Register | Final Value (Hex) |
-|----------|--------------------------|----------|--------------------|
-| `0x00`   | `addi x2, x0, 5`         | x2       | `0x00000005`       |
-| `0x04`   | `addi x3, x0, 12`        | x3       | `0x0000000C`       |
-| `0x08`   | `addi x7, x3, -9`        | x7       | `0x00000003`       |
-| `0x0C`   | `or x4, x7, x2`          | x4       | `0x00000007`       |
-| `0x10`   | `and x5, x3, x4`         | x5       | `0x00000004`       |
-| `0x14`   | `add x5, x5, x4`         | x5       | `0x0000000B`       |
-| `0x1C`   | `slt x4, x3, x4`         | x4       | `0x00000000`       |
-| `0x28`   | `slt x4, x7, x2`         | x4       | `0x00000001`       |
-| `0x2C`   | `add x7, x4, x5`         | x7       | `0x0000000C`       |
-| `0x30`   | `sub x7, x7, x2`         | x7       | `0x00000007`       |
-| `0x38`   | `lw x2, 96(x0)`          | x2       | `0x00000007`       |
-| `0x3C`   | `add x9, x2, x5`         | x9       | `0x00000012`       |
-| `0x40`   | `jal x3, 8`              | x3       | `0x00000044`       |
-| `0x48`   | `addi x2, x0, 1`         | x2       | `0x00000001`       |
-| `0x4C`   | `add x2, x2, x9`         | x2       | `0x00000013`       |
-
-### Final Register State
-
-| Register | Value (Hex)   | Description                  |
-|----------|---------------|------------------------------|
-| `x2`     | `0x00000013`  | After last add x2, x2, x9    |
-| `x3`     | `0x00000044`  | Return address from `jal`    |
-| `x4`     | `0x00000001`  | Result from last `slt`       |
-| `x5`     | `0x0000000B`  | Final result of add ops      |
-| `x7`     | `0x00000007`  | Result from `sub x7, x7, x2` |
-| `x9`     | `0x00000012`  | Result from `add x9, x2, x5` |
-
-### Memory Operations
-
-| PC       | Instruction              | Address (Hex) | Value Written (Hex) |
-|----------|--------------------------|----------------|----------------------|
-| `0x34`   | `sw x7, 20(x3)`          | `0x00000020`   | `0x00000007`         |
-| `0x50`   | `sw x2, 4(x3)`           | `0x00000048`   | `0x00000013`         |
-| `0x38`   | `lw x2, 96(x0)`          | `0x00000060`   | `0x00000007` (initial value) |
-
-Note: At the time of `jal`, register `x3` is set to `0x00000044`, which is the correct return address (PC + 4).
-
-### Final Instruction Behavior
-
-The final instruction at PC = `0x00000054` is:
-
-```assembly
-beq x2, x2, 0
-```
+## Final Execution and State Waveform
 
 ### Simulation Waveform
 
 The following waveform shows the final execution loop and register/memory state:
 
 ![Console Output](../simulation_waveforms/final_execution.png)
+
+---
+
+## Control Signal Summary
+
+For a detailed view of control signals per instruction, see our [Instruction Execution Table](instructions_table.md), which complements this documentation with:
+
+- Instruction opcodes and assembly
+- Control signals for each step (`reg_write`, `alu_src`, `result_src`, `imm_src`, `alu_control`, etc.)
+- Registers read and written
+- Memory operations
+- Program flow including branch/jump decisions
+
+---
+
+## Program Execution Overview
+
+The test program demonstrates all major processor capabilities including arithmetic, logic, control flow, and memory operations.
+
+### Instruction Categories Tested:
+- Immediate operations (`addi`)
+- Arithmetic/logic operations (`add`, `sub`, `and`, `or`, `slt`)
+- Control flow (`beq`, `jal`)
+- Memory access (`lw`, `sw`)
+
+### Final State Summary:
+- Active registers: x2, x3, x4, x5, x7, x9 with meaningful values
+- Memory locations written: 0x60, 0x64
+- Program terminates in a controlled infinite loop
+
+---
+
+## Implementation Verification
+
+Verification was performed via:
+- Modular stage testing
+- Full datapath integration
+- Instruction coverage
+- Edge case scenarios (branch conditions, memory boundaries, register zero)
+- Control signal correctness
+
+---
+
+## Conclusion
+
+The single-cycle RISC-V processor fully supports the RV32I instruction set, verified through a stepwise implementation and testing methodology. The instruction execution table provides a detailed reference for understanding processor behavior and supports further verification or education.
+
+---

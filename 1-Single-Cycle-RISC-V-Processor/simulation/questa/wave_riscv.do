@@ -25,11 +25,10 @@ add wave -noupdate {/top_tb/DUT/RF/REG[5]}
 add wave -noupdate {/top_tb/DUT/RF/REG[7]}
 add wave -noupdate {/top_tb/DUT/RF/REG[9]}
 add wave -noupdate -divider Memory
-add wave -noupdate {/top_tb/DUT/DMEM/Data_mem[32]}
-add wave -noupdate {/top_tb/DUT/DMEM/Data_mem[72]}
 add wave -noupdate {/top_tb/DUT/DMEM/Data_mem[96]}
+add wave -noupdate {/top_tb/DUT/DMEM/Data_mem[100]}
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {102 ps} 0}
+WaveRestoreCursors {{Cursor 1} {98 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 307
 configure wave -valuecolwidth 100
@@ -45,4 +44,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {0 ps} {853 ps}
+WaveRestoreZoom {0 ps} {221 ps}
